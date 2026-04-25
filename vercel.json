@@ -1,7 +1,0 @@
-{
-  "buildCommand": "cd campustax && npm install && npm run build",
-  "outputDirectory": "campustax/.next",
-  "installCommand": "cd campustax && npm install",
-  "framework": "nextjs",
-  "rootDirectory": "campustax"
-}
