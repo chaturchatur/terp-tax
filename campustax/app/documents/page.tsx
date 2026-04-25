@@ -52,7 +52,7 @@ export default function DocumentsPage() {
         form.append("formType", docId);
         const res = await fetch("/api/extract", { method: "POST", body: form });
         if (res.ok) {
-          const data = await res.json();
+          const { data } = await res.json();
           if (docId === "w2") {
             const parsed = W2Schema.safeParse(data);
             setW2(parsed.success ? parsed.data : (data as Parameters<typeof setW2>[0]));
