@@ -2,265 +2,279 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { ArrowRight, ArrowLeft, Info } from "lucide-react";
+import { TopBar } from "@/components/TopBar";
 import { useTaxStore } from "@/lib/store";
-import { computeSPT } from "@/lib/tax/spt";
+
+const SPT_QS = {
+  nonresident: [
+    { id: "visa",   q: "What is your visa type?",                          opts: ["F-1 Student", "J-1 Exchange Visitor", "Other"] },
+    { id: "years",  q: "How many full tax years have you been in the US on this visa?", opts: ["1st year", "2nd year", "3rd–4th year", "5+ years"] },
+    { id: "days",   q: "How many days were you physically present in the US in 2025?", opts: ["Fewer than 31", "31–182", "183+"] },
+    { id: "income", q: "Did you have US-source income in 2025?",           opts: ["Yes, campus job (W-2)", "Yes, scholarship/fellowship (1042-S)", "Yes, both", "No income"] },
+    { id: "md",     q: "Was any of that income earned in Maryland?",       opts: ["Yes", "No", "Not sure"] },
+  ],
+  resident: [
+    { id: "filing",       q: "What is your filing status?",                opts: ["Single", "Married Filing Jointly", "Married Filing Separately", "Head of Household"] },
+    { id: "days",         q: "Were you a Maryland resident for all of 2025?", opts: ["Yes, full year", "Part of the year", "No, I lived elsewhere"] },
+    { id: "income",       q: "What types of income did you have in 2025?", opts: ["Wages only (W-2)", "Wages + investment income", "Self-employment income", "Other / multiple sources"] },
+    { id: "student_loan", q: "Did you pay student loan interest in 2025?", opts: ["Yes", "No"] },
+    { id: "md",           q: "Was any income earned in Maryland?",         opts: ["Yes", "No", "Not sure"] },
+  ],
+};
 
 export default function ResidencyPage() {
   const router = useRouter();
-  const { setResidencyAnswers, setFilerType } = useTaxStore();
+  const { filerType, setFilerType } = useTaxStore();
 
+  const questions = filerType === "resident" ? SPT_QS.resident : SPT_QS.nonresident;
   const [step, setStep] = useState(0);
-  const [visaType, setVisaType] = useState<"F-1" | "J-1" | "H-1B" | "other">("F-1");
-  const [countryOfCitizenship, setCountryOfCitizenship] = useState("");
-  const [exemptYearsUsed, setExemptYearsUsed] = useState(0);
-  const [daysCurrentYear, setDaysCurrentYear] = useState(0);
-  const [daysPriorYear1, setDaysPriorYear1] = useState(0);
-  const [daysPriorYear2, setDaysPriorYear2] = useState(0);
-  const [sptResult, setSptResult] = useState<ReturnType<typeof computeSPT> | null>(null);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const done = step >= questions.length;
 
-  const steps = [
-    "Visa type",
-    "Days in US",
-    "Result",
-  ];
+  const isNR =
+    filerType !== "resident" && answers.years !== "5+ years";
+  const status = filerType === "resident" ? "resident" : isNR ? "nonresident" : "resident";
+  const forms =
+    filerType === "resident"
+      ? ["Form 1040", "MD Form 502"]
+      : isNR
+      ? ["Form 1040-NR", "Form 8843", "MD Form 505"]
+      : ["Form 1040", "MD Form 502"];
 
-  function handleCompute() {
-    const result = computeSPT({
-      visaType,
-      exemptYearsUsed,
-      daysCurrentYear,
-      daysPriorYear1,
-      daysPriorYear2,
-    });
-    setSptResult(result);
-    setResidencyAnswers({
-      visaType,
-      exemptYearsUsed,
-      daysCurrentYear,
-      daysPriorYear1,
-      daysPriorYear2,
-      countryOfCitizenship,
-    });
-    setFilerType(result.isResident ? "resident" : "nonresident");
-    setStep(2);
+  function pick(val: string) {
+    setAnswers((a) => ({ ...a, [questions[step].id]: val }));
+    setStep((s) => s + 1);
   }
 
   function handleContinue() {
+    setFilerType(status);
     router.push("/documents");
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-12 max-w-2xl">
-        {/* Progress */}
-        <div className="flex items-center gap-2 mb-8">
-          {steps.map((s, i) => (
-            <div key={s} className="flex items-center gap-2">
+    <div>
+      <TopBar />
+      <div
+        style={{
+          minHeight: "100vh",
+          paddingTop: 56,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "80px 24px",
+        }}
+      >
+        <div style={{ width: "100%", maxWidth: 500 }}>
+          <p
+            style={{
+              fontSize: 11.5,
+              fontWeight: 700,
+              letterSpacing: ".08em",
+              textTransform: "uppercase",
+              color: "var(--umd-red)",
+              marginBottom: 6,
+            }}
+          >
+            Step 1 — Residency Check
+          </p>
+          <h2
+            style={{
+              fontFamily: "var(--ff-display, serif)",
+              fontSize: 28,
+              fontWeight: 600,
+              marginBottom: 4,
+            }}
+          >
+            {done ? "Your filing status" : "A few quick questions"}
+          </h2>
+          {!done && (
+            <p style={{ color: "var(--ink-light)", fontSize: 13.5, marginBottom: 24 }}>
+              Question {step + 1} of {questions.length}
+            </p>
+          )}
+
+          {/* Progress bar */}
+          {!done && (
+            <div
+              style={{
+                height: 4,
+                background: "var(--cream-border)",
+                borderRadius: 99,
+                marginBottom: 28,
+                overflow: "hidden",
+              }}
+            >
               <div
-                className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                  i === step ? "bg-primary text-primary-foreground" : i < step ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {i < step ? "✓" : i + 1}
-              </div>
-              <span className={`text-sm ${i === step ? "font-medium" : "text-muted-foreground"}`}>{s}</span>
-              {i < steps.length - 1 && <span className="text-muted-foreground mx-1">→</span>}
+                style={{
+                  height: "100%",
+                  background: "var(--umd-red)",
+                  borderRadius: 99,
+                  width: `${(step / questions.length) * 100}%`,
+                  transition: "width .3s",
+                }}
+              />
             </div>
-          ))}
-        </div>
+          )}
 
-        {/* Step 0: Visa type */}
-        {step === 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Immigration Status</CardTitle>
-              <CardDescription>
-                This helps us determine whether you file as a resident or non-resident alien.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Visa type</Label>
-                <Select value={visaType} onValueChange={(v) => setVisaType(v as typeof visaType)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="F-1">F-1 (Student)</SelectItem>
-                    <SelectItem value="J-1">J-1 (Exchange Visitor)</SelectItem>
-                    <SelectItem value="H-1B">H-1B (Specialty Worker)</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Country of citizenship</Label>
-                <Input
-                  placeholder="e.g. China, India, South Korea"
-                  value={countryOfCitizenship}
-                  onChange={(e) => setCountryOfCitizenship(e.target.value)}
-                />
-              </div>
-
-              {(visaType === "F-1" || visaType === "J-1") && (
-                <div className="space-y-2">
-                  <Label>
-                    How many prior calendar years have you already used as an exempt F/J student?
-                  </Label>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-                    <Info className="h-3 w-3" />
-                    <span>Count each year you were in the US on F/J status, starting from your first year.</span>
-                  </div>
-                  <Select
-                    value={String(exemptYearsUsed)}
-                    onValueChange={(v) => v && setExemptYearsUsed(parseInt(v))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[0, 1, 2, 3, 4, 5].map((n) => (
-                        <SelectItem key={n} value={String(n)}>
-                          {n} year{n !== 1 ? "s" : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              <Button
-                className="w-full"
-                disabled={!countryOfCitizenship}
-                onClick={() => {
-                  // F/J within 5 years = non-resident, skip day counting
-                  if ((visaType === "F-1" || visaType === "J-1") && exemptYearsUsed < 5) {
-                    handleCompute();
-                  } else {
-                    setStep(1);
-                  }
+          {/* Question or result */}
+          {!done ? (
+            <div className="terp-fadeup" key={step} style={{ animationDelay: ".04s" }}>
+              <div
+                style={{
+                  background: "white",
+                  border: "1.5px solid var(--cream-border)",
+                  borderRadius: 13,
+                  padding: "24px 24px 20px",
                 }}
               >
-                Next <ArrowRight className="h-4 w-4 ml-1" />
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 1: Days in US */}
-        {step === 1 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Days Present in the US</CardTitle>
-              <CardDescription>
-                The IRS Substantial Presence Test uses a 3-year weighted formula to determine residency.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Days in the US during 2024</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={366}
-                  value={daysCurrentYear}
-                  onChange={(e) => setDaysCurrentYear(parseInt(e.target.value) || 0)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Days in the US during 2023</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={365}
-                  value={daysPriorYear1}
-                  onChange={(e) => setDaysPriorYear1(parseInt(e.target.value) || 0)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Days in the US during 2022</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={365}
-                  value={daysPriorYear2}
-                  onChange={(e) => setDaysPriorYear2(parseInt(e.target.value) || 0)}
-                />
-              </div>
-
-              <div className="rounded-md bg-muted p-3 text-xs">
-                <p className="font-medium mb-1">SPT Formula Preview</p>
-                <p>
-                  {daysCurrentYear} + {Math.floor(daysPriorYear1 / 3)} (1/3 of {daysPriorYear1}) +{" "}
-                  {Math.floor(daysPriorYear2 / 6)} (1/6 of {daysPriorYear2}) ={" "}
-                  <strong>
-                    {daysCurrentYear + Math.floor(daysPriorYear1 / 3) + Math.floor(daysPriorYear2 / 6)} days
-                  </strong>{" "}
-                  {daysCurrentYear + Math.floor(daysPriorYear1 / 3) + Math.floor(daysPriorYear2 / 6) >= 183
-                    ? "≥ 183 → Resident"
-                    : "< 183 → Non-resident"}
+                <p
+                  style={{
+                    fontFamily: "var(--ff-display, serif)",
+                    fontSize: 18,
+                    fontWeight: 500,
+                    marginBottom: 18,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {questions[step].q}
                 </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                  {questions[step].opts.map((opt) => (
+                    <OptButton key={opt} label={opt} onClick={() => pick(opt)} />
+                  ))}
+                </div>
               </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setStep(0)}>
-                  <ArrowLeft className="h-4 w-4 mr-1" /> Back
-                </Button>
-                <Button className="flex-1" onClick={handleCompute}>
-                  Calculate <ArrowRight className="h-4 w-4 ml-1" />
-                </Button>
+            </div>
+          ) : (
+            <div className="terp-fadeup">
+              <div
+                style={{
+                  background: "white",
+                  border: "1.5px solid var(--cream-border)",
+                  borderRadius: 13,
+                  padding: 24,
+                  marginBottom: 16,
+                }}
+              >
+                <div style={{ display: "flex", gap: 14, marginBottom: 18 }}>
+                  <div
+                    style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 10,
+                      flexShrink: 0,
+                      background:
+                        status === "nonresident"
+                          ? "var(--umd-blue-light)"
+                          : "var(--umd-green-light)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 20,
+                    }}
+                  >
+                    {status === "nonresident" ? "🌐" : "🏠"}
+                  </div>
+                  <div>
+                    <p
+                      style={{
+                        fontFamily: "var(--ff-display, serif)",
+                        fontSize: 17,
+                        fontWeight: 600,
+                        marginBottom: 4,
+                      }}
+                    >
+                      {status === "nonresident" ? "Non-Resident Alien" : "US Tax Resident"}
+                    </p>
+                    <p style={{ fontSize: 13, color: "var(--ink-mid)", lineHeight: 1.6 }}>
+                      {status === "nonresident"
+                        ? "F-1/J-1 students in their first 5 years are exempt from the Substantial Presence Test and file as non-resident aliens."
+                        : filerType === "resident"
+                        ? "As a US citizen or resident, you file a standard resident return."
+                        : "You meet the Substantial Presence Test and file as a US tax resident."}
+                    </p>
+                  </div>
+                </div>
+                <div
+                  style={{
+                    background: "var(--cream)",
+                    borderRadius: 8,
+                    padding: "12px 14px",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: ".06em",
+                      color: "var(--ink-mid)",
+                      marginBottom: 8,
+                    }}
+                  >
+                    Required forms
+                  </p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {forms.map((f) => (
+                      <span key={f} className="terp-chip terp-chip-blue">
+                        {f}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 2: Result */}
-        {step === 2 && sptResult && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2 mb-2">
-                <CardTitle>Your Filing Status</CardTitle>
-                <Badge variant={sptResult.isResident ? "default" : "destructive"}>
-                  {sptResult.isResident ? "Resident Alien" : "Non-Resident Alien"}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-md bg-muted p-4 text-sm leading-relaxed">
-                {sptResult.explanation}
-              </div>
-
-              <div className="rounded-md border p-4 text-sm space-y-2">
-                <p className="font-medium">You will file:</p>
-                {sptResult.isResident ? (
-                  <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                    <li>Federal Form 1040</li>
-                    <li>Maryland Form 502 + county/local tax</li>
-                  </ul>
-                ) : (
-                  <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                    <li>Federal Form 1040-NR</li>
-                    <li>Form 8843 (required even with $0 income)</li>
-                    <li>Maryland Form 505 (if you earned wages in MD)</li>
-                  </ul>
-                )}
-              </div>
-
-              <Button className="w-full" onClick={handleContinue}>
-                Continue to Upload Documents <ArrowRight className="h-4 w-4 ml-1" />
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+              <button
+                onClick={handleContinue}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 7,
+                  background: "var(--umd-red)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "13px",
+                  fontFamily: "var(--ff-body, sans-serif)",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Continue to Document Upload →
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
+  );
+}
+
+function OptButton({ label, onClick }: { label: string; onClick: () => void }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        background: hov ? "var(--umd-red-light)" : "var(--cream)",
+        border: `1.5px solid ${hov ? "var(--umd-red-mid)" : "var(--cream-border)"}`,
+        borderRadius: 8,
+        padding: "11px 14px",
+        textAlign: "left",
+        cursor: "pointer",
+        fontSize: 13.5,
+        fontWeight: 500,
+        transition: "all .15s",
+        color: hov ? "var(--umd-red)" : "var(--ink)",
+        fontFamily: "var(--ff-body, sans-serif)",
+      }}
+    >
+      {label}
+    </button>
   );
 }
