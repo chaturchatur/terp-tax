@@ -128,3 +128,52 @@
     @apply font-sans;
   }
 }
+
+/* ── TerpTax design system ── */
+:root {
+  --cream: oklch(97% 0.012 70);
+  --cream-dark: oklch(93% 0.014 70);
+  --cream-border: oklch(87% 0.016 70);
+  --ink: oklch(18% 0.02 60);
+  --ink-mid: oklch(42% 0.015 60);
+  --ink-light: oklch(62% 0.012 60);
+  --umd-red: oklch(50% 0.20 25);
+  --umd-red-light: oklch(93% 0.05 25);
+  --umd-red-mid: oklch(72% 0.14 25);
+  --umd-gold: oklch(76% 0.14 82);
+  --umd-gold-light: oklch(95% 0.05 82);
+  --umd-green: oklch(55% 0.15 145);
+  --umd-green-light: oklch(94% 0.05 145);
+  --umd-blue: oklch(52% 0.16 250);
+  --umd-blue-light: oklch(93% 0.05 250);
+}
+
+@keyframes terp-fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes terp-fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes terp-spin {
+  to { transform: rotate(360deg); }
+}
+
+.terp-fadeup { animation: terp-fadeUp .4s ease both; }
+.terp-fadein { animation: terp-fadeIn .3s ease both; }
+
+.terp-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+  font-family: var(--ff-mono, monospace);
+  text-transform: uppercase; letter-spacing: .03em;
+}
+.terp-chip-green { background: var(--umd-green-light); color: oklch(38% 0.15 145); }
+.terp-chip-blue  { background: var(--umd-blue-light);  color: oklch(36% 0.16 250); }
+.terp-chip-gold  { background: var(--umd-gold-light);  color: oklch(46% 0.14 82); }
+.terp-chip-red   { background: var(--umd-red-light);   color: var(--umd-red); }
+.terp-chip-muted { background: var(--cream-dark);      color: var(--ink-light); }
+
+.terp-spin { animation: terp-spin .7s linear infinite; }
